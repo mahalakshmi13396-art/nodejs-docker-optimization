@@ -1,0 +1,57 @@
+
+name: Docker Build and Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  docker-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build and start containers
+        run: docker compose up -d --build
+
+      - name: Wait for application health
+        run: |
+          for i in {1..30}; do
+            STATUS=$(docker inspect --format='{{.State.Health.Status}}' "$(docker compose ps -q app)")
+            if [ "$STATUS" = "healthy" ]; then
+              echo "Application is healthy"
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose logs
+          exit 1
+
+      - name: Test application
+        run: |
+          curl --fail http://localhost:3000
+
+      - name: Check image size under 150 MB
+        run: |
+          IMAGE_ID=$(docker compose images -q app | head -n 1)
+          SIZE=$(docker image inspect "$IMAGE_ID" --format='{{.Size}}')
+          echo "Image size: $SIZE bytes"
+          LIMIT=$((150 * 1024 * 1024))
+          if [ "$SIZE" -ge "$LIMIT" ]; then
+            echo "Image is not under 150 MB"
+            exit 1
+          fi
+          echo "Image is under 150 MB"
+
+      - name: Show container status
+        if: always()
+        run: docker compose ps
+
+      - name: Stop containers
+        if: always()
+        run: docker compose down -v
