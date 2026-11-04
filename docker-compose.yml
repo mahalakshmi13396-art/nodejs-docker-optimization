@@ -1,18 +1,22 @@
 
 services:
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: nodejs-app
     ports:
       - "3000:3000"
     environment:
-      PORT: 3000
+      PORT: "3000"
       DB_HOST: db
       DB_USER: postgres
       DB_PASSWORD: postgres123
       DB_NAME: appdb
     depends_on:
-        healthcheck:
+      db:
+        condition: service_healthy
+    healthcheck:
       test:
         - CMD
         - node
@@ -22,13 +26,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
-      db:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
 
   db:
     image: postgres:16-alpine
@@ -40,7 +37,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d appdb"]
+      test:
+        - CMD-SHELL
+        - pg_isready -U postgres -d appdb
       interval: 5s
       timeout: 5s
       retries: 5
