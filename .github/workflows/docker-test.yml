@@ -17,19 +17,19 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build and start containers
-        run: docker compose -f ./docker-compose.yml up -d --build
+        run: docker compose up -d --build
 
       - name: Wait for application health
         run: |
-          for i in {1..30}; do
-            STATUS=$(docker inspect --format='{{.State.Health.Status}}' "$(docker compose -f ./docker-compose.yml ps -q app)" 2>/dev/null || echo starting)
+          for i in {1..45}; do
+            STATUS=$(docker compose ps --format json app | python3 -c "import sys,json; print(json.load(sys.stdin).get('Health',''))" 2>/dev/null || true)
+            echo "Health status: $STATUS"
             if [ "$STATUS" = "healthy" ]; then
-              echo "Application is healthy"
               exit 0
             fi
             sleep 2
           done
-          docker compose -f ./docker-compose.yml logs
+          docker compose logs
           exit 1
 
       - name: Test application
@@ -37,7 +37,7 @@ jobs:
 
       - name: Check image size
         run: |
-          IMAGE_ID=$(docker compose -f ./docker-compose.yml images -q app | head -n 1)
+          IMAGE_ID=$(docker compose images -q app | head -n 1)
           SIZE=$(docker image inspect "$IMAGE_ID" --format='{{.Size}}')
           echo "Image size: $SIZE bytes"
           if [ "$SIZE" -ge $((150 * 1024 * 1024)) ]; then
@@ -48,9 +48,8 @@ jobs:
 
       - name: Show container status
         if: always()
-        run: docker compose -f ./docker-compose.yml ps
+        run: docker compose ps
 
       - name: Stop containers
         if: always()
-        run: docker compose -f ./docker-compose.yml down -v
-
+        run: docker compose down -v
