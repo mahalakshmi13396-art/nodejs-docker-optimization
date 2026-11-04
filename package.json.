@@ -1,0 +1,12 @@
+{
+  "name": "nodejs-docker-optimization",
+  "version": "1.0.0",
+  "description": "Optimized Node.js application with Docker",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "pg": "^8.16.3"
+  }
+}
