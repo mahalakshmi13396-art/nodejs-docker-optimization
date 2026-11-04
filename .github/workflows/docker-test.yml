@@ -22,13 +22,14 @@ jobs:
       - name: Wait for application health
         run: |
           for i in {1..45}; do
-            STATUS=$(docker compose ps --format json app | python3 -c "import sys,json; print(json.load(sys.stdin).get('Health',''))" 2>/dev/null || true)
-            echo "Health status: $STATUS"
-            if [ "$STATUS" = "healthy" ]; then
+            if curl -fsS http://localhost:3000; then
+              echo "Application is healthy!"
               exit 0
             fi
+            echo "Waiting for application..."
             sleep 2
           done
+          echo "Application failed to respond"
           docker compose logs
           exit 1
 
